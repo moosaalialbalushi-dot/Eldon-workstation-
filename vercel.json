@@ -1,0 +1,22 @@
+{
+  "buildCommand": "pnpm build",
+  "outputDirectory": "dist/public",
+  "installCommand": "pnpm install",
+  "framework": null,
+  "env": {
+    "VITE_APP_ID": "@VITE_APP_ID",
+    "VITE_APP_TITLE": "@VITE_APP_TITLE",
+    "VITE_APP_LOGO": "@VITE_APP_LOGO",
+    "VITE_FRONTEND_FORGE_API_URL": "@VITE_FRONTEND_FORGE_API_URL",
+    "VITE_FRONTEND_FORGE_API_KEY": "@VITE_FRONTEND_FORGE_API_KEY",
+    "VITE_OAUTH_PORTAL_URL": "@VITE_OAUTH_PORTAL_URL",
+    "VITE_ANALYTICS_ENDPOINT": "@VITE_ANALYTICS_ENDPOINT",
+    "VITE_ANALYTICS_WEBSITE_ID": "@VITE_ANALYTICS_WEBSITE_ID"
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
