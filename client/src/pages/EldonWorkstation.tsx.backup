@@ -978,27 +978,9 @@ In production, this routes via backend to the specific API endpoint.${connectorI
                   {availableAIs.filter(ai => ai.id !== 'master-skill').map(ai => (
                     <div key={ai.id}>
                       <label className="block text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">{ai.name} API Key</label>
-                      <input 
-                        type="password" 
-                        value={aiApiKeys[ai.id] || ''}
-                        onChange={(e) => setAiApiKeys({...aiApiKeys, [ai.id]: e.target.value})}
-                        placeholder="Enter your API key here..." 
-                        className="w-full bg-[#1a1a1a] border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 focus:border-amber-500 focus:outline-none transition-colors" 
-                      />
+                      <input type="password" placeholder="Managed securely via backend routes..." className="w-full bg-[#1a1a1a] border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 focus:border-amber-500 focus:outline-none" />
                     </div>
                   ))}
-                </div>
-
-                <div className="border-t border-gray-800 pt-6 mb-6 flex items-center justify-between">
-                  <span className={`text-sm font-medium transition-opacity duration-300 flex items-center ${aiKeysSaved ? 'text-green-500 opacity-100' : 'opacity-0'}`}>
-                    <Check size={16} className="mr-1" /> API Keys Saved
-                  </span>
-                  <button 
-                    onClick={handleSaveAiKeys}
-                    className="px-6 py-2 bg-amber-500 text-gray-950 hover:bg-amber-400 rounded-lg font-bold transition-colors shadow-[0_0_10px_rgba(251,191,36,0.2)]"
-                  >
-                    Save API Keys
-                  </button>
                 </div>
 
                 <div className="border-t border-gray-800 pt-6">
