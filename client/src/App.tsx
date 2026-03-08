@@ -34,13 +34,15 @@ export default function App() {
   // --- ACTUAL API KEY STATE ---
   const [geminiKey, setGeminiKey] = useState('');
 
-  // Load saved key on startup
+  // Load saved key on startup safely on the client
   useEffect(() => {
-    const savedGemini = localStorage.getItem('eldon_gemini_key');
-    if (savedGemini) setGeminiKey(savedGemini);
+    if (typeof window !== 'undefined') {
+      const savedGemini = localStorage.getItem('eldon_gemini_key');
+      if (savedGemini) setGeminiKey(savedGemini);
+    }
   }, []);
 
-  // --- UPDATED PREMIUM AI PROVIDER STATE ---
+  // --- PREMIUM AI PROVIDER STATE ---
   const [availableAIs, setAvailableAIs] = useState([
     { id: 'master-skill', name: '✨ 3-Layer Master Skill', theme: 'bg-gradient-to-r from-amber-400 to-yellow-600 text-gray-950 font-bold' },
     { id: 'manus', name: 'Manus AI (Integrations)', theme: 'bg-gray-200 text-gray-900' },
@@ -49,7 +51,7 @@ export default function App() {
     { id: 'claude', name: 'Anthropic Claude 4.6', theme: 'bg-amber-700 text-white' },
     { id: 'deepseek', name: 'DeepSeek V3', theme: 'bg-yellow-400 text-gray-900' },
   ]);
-  const [selectedAI, setSelectedAI] = useState('manus');
+  const [selectedAI, setSelectedAI] = useState('master-skill');
   const [newAiName, setNewAiName] = useState('');
 
   // --- DYNAMIC NATIVE FEATURES TOGGLES ---
@@ -72,24 +74,20 @@ export default function App() {
 
   // --- GEMINI API FEATURES & PIPELINE STATE ---
   const [isEnhancing, setIsEnhancing] = useState(false);
+  const [isRewriting, setIsRewriting] = useState(false);
+  const [isSummarizingChat, setIsSummarizingChat] = useState(false);
+  const [isExtractingActions, setIsExtractingActions] = useState(false);
+  const [isDraftingReport, setIsDraftingReport] = useState(false);
+  const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
+  const [simplifyingIndex, setSimplifyingIndex] = useState(null);
   const [smartReplies, setSmartReplies] = useState([]);
   const [isGeneratingReplies, setIsGeneratingReplies] = useState(false);
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
   const [studyPlan, setStudyPlan] = useState("");
+  const [quizContent, setQuizContent] = useState("");
   const [fileSummaries, setFileSummaries] = useState({});
   const [summarizingFileId, setSummarizingFileId] = useState(null);
   const [pipelineState, setPipelineState] = useState({ active: false, step: 0 });
-
-  // --- NEW LLM FEATURE STATES ---
-  const [isSummarizingChat, setIsSummarizingChat] = useState(false);
-  const [isDraftingReport, setIsDraftingReport] = useState(false);
-  const [simplifyingIndex, setSimplifyingIndex] = useState(null);
-
-  // --- BRAND NEW LLM FEATURE STATES ---
-  const [isExtractingActions, setIsExtractingActions] = useState(false);
-  const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
-  const [quizContent, setQuizContent] = useState("");
-  const [isRewriting, setIsRewriting] = useState(false);
 
   // --- REAL FILE UPLOAD SYSTEM ---
   const [skillsFiles, setSkillsFiles] = useState([]);
@@ -145,10 +143,8 @@ export default function App() {
     return `\n\n[SYSTEM CONTEXT - UPLOADED FILES]:\n${fileContents}\n[END SYSTEM CONTEXT]`;
   };
 
-  // Reusable API Caller
+  // --- REUSABLE API CALLER ---
   const callGeminiAPI = async (promptText) => {
-    // 1. Try to use the key typed into the Settings tab first.
-    // 2. Fallback to the Vercel Environment Variable if it exists.
     const apiKey = geminiKey || process.env.NEXT_PUBLIC_GEMINI_API_KEY || ""; 
     
     if (!apiKey) {
@@ -166,12 +162,13 @@ export default function App() {
     return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
   };
 
+  // --- AI FEATURE HANDLERS ---
   const handleEnhancePrompt = async () => {
     if (!input.trim()) return;
     setIsEnhancing(true);
     try {
-      const result = await callGeminiAPI(`Enhance this prompt: "${input}"`);
-      if (result) setInput(result.trim());
+      const result = await callGeminiAPI(`Enhance this prompt to be more detailed and clear. Output ONLY the prompt itself: "${input}"`);
+      if (result && !result.includes("System Alert")) setInput(result.trim());
     } catch (e) {}
     setIsEnhancing(false);
   };
@@ -180,45 +177,19 @@ export default function App() {
     if (!input.trim()) return;
     setIsRewriting(true);
     try {
-      const result = await callGeminiAPI(`Rewrite the following text to be highly professional, polite, and polished. Output ONLY the rewritten text itself, nothing else. Text: "${input}"`);
-      if (result) setInput(result.trim());
-    } catch (e) {
-      console.error("Failed to rewrite prompt");
-    }
-    setIsRewriting(false);
-  };
-
-  const handleGeneratePlan = async () => {
-    setIsGeneratingPlan(true);
-    try {
-      const result = await callGeminiAPI(`Generate a 3-step study plan based on my attached files.`);
-      setStudyPlan(result);
-    } catch (e) {
-      setStudyPlan("Error generating plan.");
-    }
-    setIsGeneratingPlan(false);
-  };
-
-  const handleSummarizeFile = async (fileId, fileName) => {
-    setSummarizingFileId(fileId);
-    try {
-      const file = skillsFiles.find(f => f.id === fileId);
-      const contentToSummarize = file ? file.content.substring(0, 1500) : "No text content.";
-      const result = await callGeminiAPI(`Summarize this file briefly: \n${contentToSummarize}`);
-      setFileSummaries(prev => ({ ...prev, [fileId]: result }));
+      const result = await callGeminiAPI(`Rewrite the following text to be highly professional and polished. Output ONLY the rewritten text itself. Text: "${input}"`);
+      if (result && !result.includes("System Alert")) setInput(result.trim());
     } catch (e) {}
-    setSummarizingFileId(null);
+    setIsRewriting(false);
   };
 
   const handleSummarizeChat = async () => {
     setIsSummarizingChat(true);
     try {
       const chatLog = messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
-      const result = await callGeminiAPI(`Summarize this chat session in 3 concise bullet points. Focus on the main topics discussed and any decisions made.\n\nChat Log:\n${chatLog}`);
+      const result = await callGeminiAPI(`Summarize this chat session in 3 concise bullet points. Focus on the main topics and decisions.\n\nChat Log:\n${chatLog}`);
       setMessages(prev => [...prev, { role: 'ai', content: `**✨ Session Summary:**\n\n${result}`, ai: 'gemini', variant: 'Gemini Session Summarizer' }]);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) {}
     setIsSummarizingChat(false);
   };
 
@@ -226,46 +197,62 @@ export default function App() {
     setIsExtractingActions(true);
     try {
       const chatLog = messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
-      const result = await callGeminiAPI(`Review this chat session and extract a markdown checklist of the 3-5 most important action items or next steps. Format as checkboxes using markdown [ ] syntax.\n\nChat Log:\n${chatLog}`);
-      setMessages(prev => [...prev, { role: 'ai', content: `**✨ Extracted Action Items:**\n\n${result}`, ai: 'gemini', variant: 'Gemini Task Extractor' }]);
-    } catch (e) {
-      console.error(e);
-    }
+      const result = await callGeminiAPI(`Review this chat session and extract a markdown checklist of the 3-5 most important action items. Format as markdown checkboxes [ ].\n\nChat Log:\n${chatLog}`);
+      setMessages(prev => [...prev, { role: 'ai', content: `**✨ Action Items:**\n\n${result}`, ai: 'gemini', variant: 'Gemini Task Extractor' }]);
+    } catch (e) {}
     setIsExtractingActions(false);
   };
 
   const handleSimplifyMessage = async (index, content) => {
     setSimplifyingIndex(index);
     try {
-      const result = await callGeminiAPI(`Explain the following text simply, as if I were a beginner or 5 years old. Use an easy-to-understand analogy. Text:\n\n"${content}"`);
+      const result = await callGeminiAPI(`Explain the following text simply, as if I were a beginner. Use an easy-to-understand analogy. Text:\n\n"${content}"`);
       setMessages(prev => [...prev, { role: 'ai', content: `**✨ ELI5 (Explain Like I'm 5):**\n\n${result}`, ai: 'gemini', variant: 'Gemini Simplifier' }]);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) {}
     setSimplifyingIndex(null);
   };
 
-  const handleDraftMasterReport = async () => {
-    setIsDraftingReport(true);
+  const handleGeneratePlan = async () => {
+    setIsGeneratingPlan(true);
     try {
-      const result = await callGeminiAPI(`Based ONLY on the context of the attached files, generate a comprehensive "Master Project README" in Markdown format. Include an executive summary, key features/findings, and a table of contents if applicable.`);
-      setMessages(prev => [...prev, { role: 'ai', content: `**✨ Master Project README:**\n\n${result}`, ai: 'master-skill', variant: 'Gemini Document Drafter' }]);
-      setActiveTab('chat'); // Switch to chat to show the drafted document
+      const result = await callGeminiAPI(`Generate a concise 3-step action/study plan based on my attached files.`);
+      setStudyPlan(result);
     } catch (e) {
-      console.error(e);
+      setStudyPlan("Error generating plan.");
     }
-    setIsDraftingReport(false);
+    setIsGeneratingPlan(false);
   };
 
   const handleGenerateQuiz = async () => {
     setIsGeneratingQuiz(true);
     try {
-      const result = await callGeminiAPI(`Based ONLY on the context of the attached files, generate a short 3-question multiple choice quiz to test my knowledge on this material. Put the correct answers hidden at the very bottom in a clearly separated section.`);
+      const result = await callGeminiAPI(`Based ONLY on the context of the attached files, generate a short 3-question multiple choice quiz to test my knowledge. Put the correct answers hidden at the very bottom.`);
       setQuizContent(result);
     } catch (e) {
       setQuizContent("Error generating quiz.");
     }
     setIsGeneratingQuiz(false);
+  };
+
+  const handleDraftMasterReport = async () => {
+    setIsDraftingReport(true);
+    try {
+      const result = await callGeminiAPI(`Based ONLY on the context of the attached files, generate a comprehensive "Master Project README" in Markdown format. Include an executive summary and key points.`);
+      setMessages(prev => [...prev, { role: 'ai', content: `**✨ Master Project README:**\n\n${result}`, ai: 'master-skill', variant: 'Gemini Document Drafter' }]);
+      setActiveTab('chat');
+    } catch (e) {}
+    setIsDraftingReport(false);
+  };
+
+  const handleSummarizeFile = async (fileId, fileName) => {
+    setSummarizingFileId(fileId);
+    try {
+      const file = skillsFiles.find(f => f.id === fileId);
+      const contentToSummarize = file ? file.content.substring(0, 1500) : "No text content.";
+      const result = await callGeminiAPI(`Provide a brief 2-sentence summary of this file content: \n${contentToSummarize}`);
+      setFileSummaries(prev => ({ ...prev, [fileId]: result }));
+    } catch (e) {}
+    setSummarizingFileId(null);
   };
 
   const handleAddCustomAI = (e) => {
@@ -282,7 +269,9 @@ export default function App() {
   };
 
   const handleSaveApiKeys = () => {
-    localStorage.setItem('eldon_gemini_key', geminiKey);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('eldon_gemini_key', geminiKey);
+    }
     setKeysSaved(true);
     setTimeout(() => setKeysSaved(false), 3000);
   };
@@ -324,13 +313,13 @@ export default function App() {
   const executeMasterPipeline = async (userMessage) => {
     setPipelineState({ active: true, step: 1 });
     try {
-      const step1Result = await callGeminiAPI(`Act as ${claudeVariant}. Analyze this: "${userMessage}"`);
+      const step1Result = await callGeminiAPI(`Act as ${claudeVariant}. Analyze this request thoroughly: "${userMessage}"`);
       setPipelineState({ active: true, step: 2 });
       
-      const step2Result = await callGeminiAPI(`Act as ${geminiVariant}. Expand on this: "${step1Result}"`);
+      const step2Result = await callGeminiAPI(`Act as ${geminiVariant}. Review and expand on this analysis with deep logic: "${step1Result}"`);
       setPipelineState({ active: true, step: 3 });
 
-      const step3Result = await callGeminiAPI(`Act as NotebookLM (${notebookVariant}). Present this: "${step2Result}".`);
+      const step3Result = await callGeminiAPI(`Act as NotebookLM (${notebookVariant}). Present this final report beautifully: "${step2Result}".`);
       
       const mediaCards = [];
       if (requestSlides) mediaCards.push({ type: 'slides', title: 'Auto-Generated Presentation Deck', desc: 'NotebookLM generated 5 slides.' });
@@ -365,9 +354,9 @@ export default function App() {
     if (selectedAI === 'gemini') {
       try {
         const text = await callGeminiAPI(`[Style: ${geminiVariant}]\n\nUser: ${newUserMsg.content}`);
-        setMessages(prev => [...prev, { role: 'ai', content: text || "No response received.", ai: 'gemini', variant: geminiVariant }]);
+        setMessages(prev => [...prev, { role: 'ai', content: text, ai: 'gemini', variant: geminiVariant }]);
       } catch (e) {
-        setMessages(prev => [...prev, { role: 'ai', content: "Error connecting to Gemini API.", ai: 'gemini' }]);
+        setMessages(prev => [...prev, { role: 'ai', content: "Error connecting to API.", ai: 'gemini' }]);
       }
     } else {
       setTimeout(() => {
@@ -391,7 +380,7 @@ export default function App() {
             (requestAudio ? "✅ Audio digest synthesizing.\n" : "");
         } else if (selectedAI === 'claude') {
            variantName = claudeVariant;
-           connectorInfo = "\n\n✅ Extended 200k Context utilized.";
+           connectorInfo = "\n\n✅ Extended Context utilized.";
         }
 
         const fileStatus = skillsFiles.length > 0 ? `\n\n*Note: Analyzed ${skillsFiles.length} attached files.*` : "";
